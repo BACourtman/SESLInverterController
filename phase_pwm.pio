@@ -1,0 +1,44 @@
+.program phase_pwm
+    pull block         ; Pull phase_delay (cycles) from TX FIFO
+    mov x, osr         ; x = phase_delay
+
+    pull block         ; Pull high_time (cycles) from TX FIFO
+    mov y, osr         ; y = high_time
+
+    pull block         ; Pull low_time (cycles) from TX FIFO
+    mov isr, osr       ; isr = low_time (use isr as temp register)
+
+wait_enable:
+    wait 1 gpio PIN_ENABLE   ; Wait for enable pin to go high
+
+    mov osr, x         ; Restore phase_delay to osr
+phase_delay_loop:
+    jmp x-- phase_delay_loop  ; Wait for phase offset
+
+main_loop:
+    mov osr, y         ; Restore high_time to osr
+    mov y, osr
+    set pins, 1        ; Set output high
+high_loop:
+    jmp y-- high_loop  ; Wait for high time
+
+    mov osr, isr       ; Restore low_time to osr
+    mov y, osr
+    set pins, 0        ; Set output low
+low_loop:
+    jmp y-- low_loop   ; Wait for low time
+
+    jmp main_loop      ; Repeat forever
+
+
+% c-sdk {
+void phase_pwm_program_init(PIO pio, uint sm, uint offset, uint pin, uint enable_pin) {
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, enable_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_sm_config c = phase_pwm_program_get_default_config(offset);
+    sm_config_set_set_pins(&c, pin, 1);
+    sm_config_set_in_pins(&c, enable_pin); // Set enable pin as input for wait
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
