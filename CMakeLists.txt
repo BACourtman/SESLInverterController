@@ -41,7 +41,7 @@ pico_set_program_name(InverterController "InverterController")
 pico_set_program_version(InverterController "0.1")
 
 # Generate PIO header
-pico_generate_pio_header(InverterController ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
+# pico_generate_pio_header(InverterController ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(InverterController 0)
@@ -60,7 +60,7 @@ target_include_directories(InverterController PRIVATE
 target_link_libraries(InverterController 
         hardware_spi
         hardware_pio
-        
+        hardware_adc
         )
 
 pico_add_extra_outputs(InverterController)

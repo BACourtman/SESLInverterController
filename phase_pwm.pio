@@ -8,8 +8,8 @@
     pull block         ; Pull low_time (cycles) from TX FIFO
     mov isr, osr       ; isr = low_time (use isr as temp register)
 
-wait_enable:
-    wait 1 gpio PIN_ENABLE   ; Wait for enable pin to go high
+wait_trigger:
+    wait 1 gpio PIN_TRIGGER   ; Wait for trigger pin to go high
 
     mov osr, x         ; Restore phase_delay to osr
 phase_delay_loop:
@@ -32,13 +32,13 @@ low_loop:
 
 
 % c-sdk {
-void phase_pwm_program_init(PIO pio, uint sm, uint offset, uint pin, uint enable_pin) {
+void phase_pwm_program_init(PIO pio, uint sm, uint offset, uint pin, uint trigger_pin) {
     pio_gpio_init(pio, pin);
-    pio_gpio_init(pio, enable_pin);
+    pio_gpio_init(pio, trigger_pin);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
     pio_sm_config c = phase_pwm_program_get_default_config(offset);
     sm_config_set_set_pins(&c, pin, 1);
-    sm_config_set_in_pins(&c, enable_pin); // Set enable pin as input for wait
+    sm_config_set_in_pins(&c, trigger_pin); // Set trigger pin as input for wait
     pio_sm_init(pio, sm, offset, &c);
 }
 %}
