@@ -34,8 +34,15 @@ project(InverterController C CXX ASM)
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
-
-add_executable(InverterController InverterController.c )
+add_executable(InverterController 
+    InverterController.c
+    Helpers/pwm_control.c
+    Helpers/thermocouple.c
+    Helpers/adc_monitor.c
+    Helpers/shutdown.c
+    Helpers/serial_cmd.c
+    Helpers/GPIO_pwm_discharge.c  # Add this line
+)
 
 pico_set_program_name(InverterController "InverterController")
 pico_set_program_version(InverterController "0.1")
@@ -58,10 +65,18 @@ target_include_directories(InverterController PRIVATE
 
 # Add any user requested libraries
 target_link_libraries(InverterController 
+        pico_stdlib
         hardware_spi
         hardware_pio
         hardware_adc
+        hardware_pwm
+        pico_multicore
         )
+
+# Add the Helpers directory to the include path
+target_include_directories(InverterController PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/Helpers
+)
 
 pico_add_extra_outputs(InverterController)
 
