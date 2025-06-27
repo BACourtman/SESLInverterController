@@ -5,6 +5,13 @@
 #include "hardware/adc.h"
 #include "string.h"
 
+#include "pwm_control.h"
+#include "thermocouple.h"
+#include "adc_monitor.h"
+#include "shutdown.h"
+#include "serial_cmd.h"
+#include "utils.h"
+
 // SPI Defines
 // We are going to use SPI 1, and allocate it to the following GPIO pins
 // Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
@@ -16,7 +23,11 @@
 #define PIN_MOSI 11
 
 // PIO, 4 Phase Waveform Generator
-// #include "phase_pwm.pio.h"
+#include "phase_pwm.pio.h"
+
+// PIO Pin definitions
+const uint PWM_PINS[4] = {2, 3, 4, 5}; // Update as needed
+const uint TRIGGER_PIN = 6;            // Choose a free GPIO for sync
 
 #define NUM_THERMOCOUPLES 4
 const uint CS_PINS[NUM_THERMOCOUPLES] = {9, 13, 14, 15}; // Update as needed
@@ -111,7 +122,6 @@ void shutdown() {
     char cmd[16];
     printf("SYSTEM SHUTDOWN INIATED\n");
     // 1. Set all PWM output pins low (replace with your actual output pins)
-    const uint PWM_PINS[4] = {2, 3, 4, 5}; // Example pins, update as needed
     for (int i = 0; i < 4; ++i) {
         gpio_init(PWM_PINS[i]);
         gpio_set_dir(PWM_PINS[i], GPIO_OUT);
@@ -119,9 +129,9 @@ void shutdown() {
     }
 
     // 2. Stop all PIO state machines (assuming 4 SMs)
-    // for (int sm = 0; sm < 4; ++sm) {
-    //    pio_sm_set_enabled(pio0, sm, false);
-    //}
+    for (int sm = 0; sm < 4; ++sm) {
+        pio_sm_set_enabled(pio0, sm, false);
+    }
 
     // 3. Trigger external relay if used
     gpio_init(SHUTDOWN_RELAY_PIN);
@@ -167,6 +177,9 @@ int main()
     // Variables for frequency and duty cycle
     float frequency = 1.0e5f;   // Default 100 kHz
     float duty_cycle = 0.4f;    // Default 40%
+    float period_s = 1.0f / frequency;
+    float clk_freq = 125000000.0f; // Pico default clock
+    float phase_step = period_s / 4.0f;
     printf("Default Frequency: %.2f Hz, Duty Cycle: %.2f\n", frequency, duty_cycle);
 
     // SPI initialisation. This example will use SPI at 1MHz.
@@ -174,31 +187,64 @@ int main()
     gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
-
     max31855k_init_cs_pins();
-    // printf("MAX31855K Thermocouple Interface Initialized\n");
+    printf("MAX31855K Thermocouple Interface Initialized\n");
 
     // Enable ADC 
     adc_init();
     adc_gpio_init(26); // ADC0
     adc_gpio_init(27); // ADC1
     adc_gpio_init(28); // ADC2
-    // printf("ADC Initialized\n");
+    printf("ADC Initialized\n");
     // Enable PIO Program
-    // PIO pio = pio0;
-    // uint offset = pio_add_program(pio, &phase_pwm_program);
-    // printf("Loaded program at %d\n", offset);
-    // printf("pio0 initialized\n");
-    // Main loop
+    PIO pio = pio0;
+    uint offset = pio_add_program(pio, &phase_pwm_program);
+
+    // Initialize trigger pin as output and set low
+    gpio_init(TRIGGER_PIN);
+    gpio_set_dir(TRIGGER_PIN, GPIO_IN);
+    gpio_put(TRIGGER_PIN, 0);
+
+    // Initialize each state machine for each phase
+    for (int i = 0; i < 4; ++i) {
+        phase_pwm_program_init(pio, i, offset, PWM_PINS[i], TRIGGER_PIN);
+    }
+
+    // After initializing each state machine for each phase:
+    for (int i = 0; i < 4; ++i) {
+        float phase_offset = i * phase_step;
+        uint32_t phase_delay = (uint32_t)(phase_offset * clk_freq);
+        uint32_t high_time = (uint32_t)(period_s * duty_cycle * clk_freq);
+        uint32_t low_time = (uint32_t)(period_s * (1.0f - duty_cycle) * clk_freq);
+
+        pio_sm_put_blocking(pio, i, phase_delay);
+        pio_sm_put_blocking(pio, i, high_time);
+        pio_sm_put_blocking(pio, i, low_time);
+
+        pio_sm_set_enabled(pio, i, true); // Enable the SM so it waits for the first trigger
+    }
+    gpio_set_dir(TRIGGER_PIN, GPIO_OUT);
+    gpio_put(TRIGGER_PIN, 1);
+    sleep_ms(1);
+    gpio_put(TRIGGER_PIN, 0);
+    gpio_set_dir(TRIGGER_PIN, GPIO_IN); // Restore to input for normal operation
+    // Disable all SMs after the test pulse
+    for (int i = 0; i < 4; ++i) {
+        pio_sm_set_enabled(pio, i, false);
+    }   
+    printf("Loaded PIO program at %d\n", offset);
+    
     absolute_time_t last_log = get_absolute_time();
     absolute_time_t last_print = get_absolute_time();
-    // printf("Time initialized\n");
+
     char cmd[32]; // Command buffer for serial input
     int chars = 0;
-    // printf("Inverter Controller Ready\n");
+
     // Auto TC print flag
     int auto_tc_print = 0; // 1 = ON by default
+    printf("Inverter controller ready, entering main loop\n");
 
+    // Main loop
     while (true) {
         // 1. Parse serial input
         // 1.1 Read frequency and duty cycle from serial input (to be implemented)
@@ -224,6 +270,10 @@ int main()
                         frequency = new_freq;
                         duty_cycle = new_duty;
                         printf("Updated: Frequency = %.2f Hz, Duty Cycle = %.2f\n", frequency, duty_cycle);
+
+                        // Update period and phase step
+                        period_s = 1.0f / frequency;
+                        phase_step = period_s / 4.0f;
                     }
                 } else {
                     printf("Invalid FREQ command. Usage: FREQ <frequency> <duty_cycle>\n");
@@ -250,8 +300,32 @@ int main()
         // Reset command buffer
         chars = 0;
         cmd[0] = '\0';
-        // 1.2 Push frequency and duty cycle to PIO state machines if idle (to be implemented)
+        // 1.2 Push frequency and duty cycle to PIO state machines if they are free (signaled by RX FIFO)
+        for (int phase = 0; phase < 4; ++phase) {
+            if (!pio_sm_is_rx_fifo_empty(pio, phase)) {
+                // State machine has signaled "done" and is halted
+                uint32_t done = pio_sm_get_blocking(pio, phase); // Clear the RX FIFO
 
+                // Optionally, disable the SM (it should already be halted, but this is safe)
+                pio_sm_set_enabled(pio, phase, false);
+
+                // Prepare new timing parameters
+                float phase_offset = phase * phase_step;
+                uint32_t phase_delay = (uint32_t)(phase_offset * clk_freq);
+                uint32_t high_time = (uint32_t)(period_s * duty_cycle * clk_freq);
+                uint32_t low_time = (uint32_t)(period_s * (1.0f - duty_cycle) * clk_freq);
+
+                // Push new parameters
+                pio_sm_put_blocking(pio, phase, phase_delay);
+                pio_sm_put_blocking(pio, phase, high_time);
+                pio_sm_put_blocking(pio, phase, low_time);
+
+                // Re-enable the SM so it waits for the next trigger
+                pio_sm_set_enabled(pio, phase, true);
+                printf("Updated State Machine for Phase %d: Delay = %u, High Time = %u, Low Time = %u\n", 
+                       phase, phase_delay, high_time, low_time);
+            }
+        }
         // 2. Read thermocouples
         // 2.1 Fast overtemperature protection (read every loop)
         float temps_now[NUM_THERMOCOUPLES];

@@ -1,3 +1,5 @@
+.define PIN_TRIGGER 6
+
 .program phase_pwm
     pull block         ; Pull phase_delay (cycles) from TX FIFO
     mov x, osr         ; x = phase_delay
@@ -16,6 +18,11 @@ phase_delay_loop:
     jmp x-- phase_delay_loop  ; Wait for phase offset
 
 main_loop:
+    ; Check if trigger is still high before starting PWM cycle
+    jmp pin do_pwm
+    jmp finished
+
+do_pwm:
     mov osr, y         ; Restore high_time to osr
     mov y, osr
     set pins, 1        ; Set output high
@@ -28,17 +35,22 @@ high_loop:
 low_loop:
     jmp y-- low_loop   ; Wait for low time
 
-    jmp main_loop      ; Repeat forever
+    ; After one PWM cycle, check trigger again
+    jmp main_loop
 
+finished:
+    set x, 1
+    push               ; Signal done to main program
+    jmp finished       ; Halt here forever (SM is now "free" for C to reconfigure)
 
 % c-sdk {
 void phase_pwm_program_init(PIO pio, uint sm, uint offset, uint pin, uint trigger_pin) {
     pio_gpio_init(pio, pin);
     pio_gpio_init(pio, trigger_pin);
-    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true); // Set pin as output
     pio_sm_config c = phase_pwm_program_get_default_config(offset);
     sm_config_set_set_pins(&c, pin, 1);
-    sm_config_set_in_pins(&c, trigger_pin); // Set trigger pin as input for wait
+    sm_config_set_in_pins(&c, trigger_pin); // For wait/pin
     pio_sm_init(pio, sm, offset, &c);
 }
 %}
