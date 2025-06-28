@@ -39,6 +39,7 @@
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
     "files.associations": {
         "stdlib.h": "c",
-        "thermocouple.h": "c"
+        "thermocouple.h": "c",
+        "serial_cmd.h": "c"
     }
 }
