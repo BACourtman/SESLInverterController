@@ -37,7 +37,7 @@ void pwm_control_init(float frequency, float duty_cycle) {
 
     update_pwm_parameters(frequency, duty_cycle);
     
-    printf("Loaded PIO program at %d\n", offset);
+    printf("[INFO] Loaded PIO program at %d\n", offset);
 }
 
 void update_pwm_parameters(float frequency, float duty_cycle) {
@@ -100,7 +100,7 @@ void process_pio_state_machines(PIO pio, float frequency, float duty_cycle) {
 
             // Re-enable the SM so it waits for the next trigger
             pio_sm_set_enabled(pio, phase, true);
-            printf("Updated State Machine for Phase %d: Delay = %u, High Time = %u, Low Time = %u\n", 
+            printf("[COMMAND] Updated State Machine for Phase %d: Delay = %u, High Time = %u, Low Time = %u\n", 
                    phase, phase_delay, high_time, low_time);
         }
     }
@@ -109,22 +109,22 @@ void process_pio_state_machines(PIO pio, float frequency, float duty_cycle) {
 void set_pio_debug_mode(bool enable) {
     pio_debug_mode = enable;
     if (enable) {
-        printf("PIO Debug mode ENABLED - Manual trigger control active\n");
-        printf("Hardware PIO trigger pin is now IGNORED\n");
+        printf("[DEBUG] PIO Debug mode ENABLED - Manual trigger control active\n");
+        printf("[DEBUG] Hardware PIO trigger pin is now IGNORED\n");
     } else {
-        printf("PIO Debug mode DISABLED - Hardware trigger pin active\n");
+        printf("[DEBUG] PIO Debug mode DISABLED - Hardware trigger pin active\n");
         manual_pio_trigger_state = false;
     }
 }
 
 void set_manual_pio_trigger(bool state) {
     if (!pio_debug_mode) {
-        printf("Error: PIO debug mode not enabled. Use PIO_DEBUG 1 first.\n");
+        printf("[ERROR] PIO debug mode not enabled. Use PIO_DEBUG 1 first.\n");
         return;
     }
     
     manual_pio_trigger_state = state;
-    printf("Manual PIO trigger set to %s\n", state ? "ACTIVE" : "INACTIVE");
+    printf("[COMMAND] Manual PIO trigger set to %s\n", state ? "ACTIVE" : "INACTIVE");
 }
 
 bool get_effective_pio_trigger_state(void) {
@@ -141,7 +141,7 @@ void print_pio_trigger_status(void) {
     bool hw_trigger = gpio_get(TRIGGER_PIN); // Replace with actual pin
     bool effective_trigger = get_effective_pio_trigger_state();
     
-    printf("PIO Trigger Status:\n");
+    printf("[COMMAND] PIO Trigger Status:\n");
     printf("  Debug Mode: %s\n", pio_debug_mode ? "ENABLED" : "DISABLED");
     printf("  Hardware Pin: %s\n", hw_trigger ? "HIGH" : "LOW");
     

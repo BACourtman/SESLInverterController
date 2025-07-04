@@ -27,5 +27,6 @@ float max31855k_temp_c(uint32_t value);
 void log_thermocouples(void);
 void print_tc_log_csv(void);
 bool check_overtemperature(float temps[NUM_THERMOCOUPLES]);
+void print_current_temperatures(void);
 
 #endif

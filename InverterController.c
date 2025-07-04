@@ -27,12 +27,12 @@ int main()
     while (!stdio_usb_connected()) {
         sleep_ms(100);
     }
-    printf("USB connected!\n");
+    printf("[INFO] USB connected!\n");
 
     // Variables for frequency and duty cycle
     float frequency = 1.0e5f;   // Default 100 kHz
     float duty_cycle = 0.4f;    // Default 40%
-    printf("Default Frequency: %.2f Hz, Duty Cycle: %.2f\n", frequency, duty_cycle);
+    printf("[INFO] Default Frequency: %.2f Hz, Duty Cycle: %.2f\n", frequency, duty_cycle);
 
     // SPI initialisation. This example will use SPI at 1MHz.
     spi_init(SPI_PORT, 1000*1000);
@@ -40,30 +40,30 @@ int main()
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
     max31855k_init_cs_pins();
-    printf("MAX31855K Thermocouple Interface Initialized\n");
+    printf("[INFO] MAX31855K Thermocouple Interface Initialized\n");
     float temps_now[NUM_THERMOCOUPLES];
     
     // Initialize ADC
     adc_monitor_init();
-    printf("ADC Initialized\n");
+    printf("[INFO] ADC Initialized\n");
     
     // Initialize PWM Control (PIO state machines)
     pwm_control_init(frequency, duty_cycle);
-    printf("PIO PWM Control Initialized\n");
+    printf("[INFO] PIO PWM Control Initialized\n");
     
     // Initialize discharge system (this launches core1)
     discharge_system_init();
-    printf("GPIO PWM Discharge System Initialized\n");
+    printf("[INFO] GPIO PWM Discharge System Initialized\n");
     
     absolute_time_t last_log = get_absolute_time();
     absolute_time_t last_print = get_absolute_time();
 
     // Auto TC print flag
     int auto_tc_print = 0; // 0 = OFF by default
-    printf("Inverter controller ready, entering main loop\n");
-    printf("Core 0: Main control loop (TC, ADC, Serial, PIO updates)\n");
-    printf("Core 1: Discharge PWM sequences\n");
-    printf("Type HELP for available commands\n");
+    printf("[INFO] Inverter controller ready, entering main loop\n");
+    printf("[INFO] Core 0: Main control loop (TC, ADC, Serial, PIO updates)\n");
+    printf("[INFO] Core 1: Discharge PWM sequences\n");
+    printf("[INFO] Type HELP for available commands\n");
 
     // Main loop (Core 0)
     while (true) {
@@ -81,7 +81,7 @@ int main()
         }
         
         if (check_overtemperature(temps_now)) {
-            printf("EMERGENCY: Overtemperature detected! Shutting down...\n");
+            printf("[ALERT] EMERGENCY: Overtemperature detected! Shutting down...\n");
             shutdown();
         }
         
@@ -95,9 +95,9 @@ int main()
         if (auto_tc_print && absolute_time_diff_us(last_print, get_absolute_time()) > PRINT_INTERVAL_MS * 1000) {
             last_print = get_absolute_time();
             TCLogEntry *latest = &tc_log[(log_head + LOG_SIZE - 1) % LOG_SIZE];
-            printf("Latest: %lu \n", latest->timestamp_ms);
+            printf("[DEBUG] Latest: %lu \n", latest->timestamp_ms);
             for (int i = 0; i < NUM_THERMOCOUPLES; ++i)
-                printf("TC %d: %.2f C\n", i, latest->temps[i]);
+                printf("[DATA] TC %d: %.2f C\n", i, latest->temps[i]);
             printf("\n");
         }
         
@@ -106,7 +106,7 @@ int main()
         read_all_currents(currents);
         
         if (check_overcurrent(currents)) {
-            printf("EMERGENCY: Overcurrent detected! Shutting down...\n");
+            printf("[ALERT] EMERGENCY: Overcurrent detected! Shutting down...\n");
             shutdown();
         }
         sleep_ms(5); // Adjust as needed for Core 0 loop timing

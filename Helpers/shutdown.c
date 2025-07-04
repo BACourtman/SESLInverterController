@@ -11,7 +11,7 @@
 
 void shutdown(void) {
     char cmd[16];
-    printf("SYSTEM SHUTDOWN INITIATED\n");
+    printf("[ALERT] SYSTEM SHUTDOWN INITIATED\n");
     
     // 1. Set all PWM output pins low
     for (int i = 0; i < 4; ++i) {

@@ -21,6 +21,7 @@ void max31855k_init_cs_pins(void) {
         gpio_set_dir(CS_PINS[i], GPIO_OUT);
         gpio_put(CS_PINS[i], 1); // Deselect
     }
+    printf("[INFO] MAX31855K CS pins initialized\n");
 }
 
 uint32_t max31855k_read(uint cs_pin) {
@@ -50,7 +51,7 @@ void log_thermocouples(void) {
 }
 
 void print_tc_log_csv(void) {
-    printf("timestamp_ms");
+    printf("[DATA] timestamp_ms");
     for (int i = 0; i < NUM_THERMOCOUPLES; ++i) printf(",TC%d", i);
     printf("\n");
     for (int i = 0; i < LOG_SIZE; ++i) {
@@ -68,11 +69,11 @@ bool check_overtemperature(float temps[NUM_THERMOCOUPLES]) {
         if (temps[i] > OTP_LIMIT) {
             otp_consecutive_count[i]++; // Increment consecutive count
             if (otp_consecutive_count[i] >= OTP_CONSECUTIVE_THRESHOLD) {
-                printf("CRITICAL: TC%d overtemperature for %d consecutive readings: %.2f C\n", 
+                printf("[ALERT] CRITICAL: TC%d overtemperature for %d consecutive readings: %.2f C\n", 
                        i, otp_consecutive_count[i], temps[i]);
                 return true; // Trigger shutdown
             } else {
-                printf("WARNING: TC%d overtemperature reading %d/%d: %.2f C\n", 
+                printf("[ALERT] WARNING: TC%d overtemperature reading %d/%d: %.2f C\n", 
                        i, otp_consecutive_count[i], OTP_CONSECUTIVE_THRESHOLD, temps[i]);
             }
         } else {
@@ -80,5 +81,15 @@ bool check_overtemperature(float temps[NUM_THERMOCOUPLES]) {
         }
     }
     return false;
+}
+
+// Function to print current temperatures with tags
+void print_current_temperatures(void) {
+    printf("[DATA] Current thermocouple readings:\n");
+    for (int i = 0; i < NUM_THERMOCOUPLES; ++i) {
+        uint32_t raw = max31855k_read(CS_PINS[i]);
+        float temp = max31855k_temp_c(raw);
+        printf("[DATA] TC%d: %.2f C\n", i, temp);
+    }
 }
 

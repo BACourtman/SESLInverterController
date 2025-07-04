@@ -34,17 +34,17 @@ void read_all_currents(float currents[3]) {
 bool check_overcurrent(float currents[3]) {
     // DC 0
     if (currents[0] > MAX_DC_CURRENT) {
-        printf("Overcurrent detected on DC channel 1: %.2f A\n", currents[0]);
+        printf("[ALERT] Overcurrent detected on DC channel 1: %.2f A\n", currents[0]);
         return true;
     }
     // DC 1
     if (currents[1] > MAX_DC_CURRENT) {
-        printf("Overcurrent detected on DC channel 2: %.2f A\n", currents[1]);
+        printf("[ALERT] Overcurrent detected on DC channel 2: %.2f A\n", currents[1]);
         return true;
     }
     // RMF Inverter
     if (currents[2] > MAX_RMF_CURRENT) {
-        printf("Overcurrent detected on RMF Inverter: %.2f A\n", currents[2]);
+        printf("[ALERT] Overcurrent detected on RMF Inverter: %.2f A\n", currents[2]);
         return true;
     }
     return false;

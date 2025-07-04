@@ -68,7 +68,7 @@ void discharge_pwm_init(void) {
     gpio_set_dir(TRIGGER_PIN, GPIO_IN);
     gpio_pull_down(TRIGGER_PIN);
     
-    printf("Discharge PWM initialized at 50kHz on pins %d and %d\n", PWM_PIN_CH1, PWM_PIN_CH2);
+    printf("[INFO] Discharge PWM initialized at 50kHz on pins %d and %d\n", PWM_PIN_CH1, PWM_PIN_CH2);
 }
 
 // --- Core1 Real-time Loop ---
@@ -92,7 +92,7 @@ void core1_discharge_loop(void) {
             current_step = 0;
             last_step_logged = 0xFFFFFFFF;
             if (discharge_config.verbose) {
-                printf("Discharge sequence started\n");
+                printf("[INFO] Discharge sequence started\n");
             }
         } else if (!trigger_active && sequence_running) {
             sequence_running = false;
@@ -100,7 +100,7 @@ void core1_discharge_loop(void) {
             pwm_set_chan_level(slice_ch2, chan_ch2, 0);
             current_step = 0;
             if (discharge_config.verbose) {
-                printf("Discharge sequence stopped\n");
+                printf("[INFO] Discharge sequence stopped\n");
             }
         }
         
@@ -121,14 +121,14 @@ void core1_discharge_loop(void) {
                 if (max_steps > 0 && current_step >= max_steps) {
                     current_step = 0;
                     if (discharge_config.verbose && last_step_logged != current_step) {
-                        printf("Sequence cycle completed, restarting\n");
+                        printf("[DEBUG] Sequence cycle completed, restarting\n");
                         last_step_logged = current_step;
                     }
                 }
                 
                 // Log step changes only when they actually change
                 if (discharge_config.verbose && last_step_logged != current_step) {
-                    printf("Step %lu: CH1=%.2f, CH2=%.2f\n", 
+                    printf("[DEBUG] Step %lu: CH1=%.2f, CH2=%.2f\n", 
                            current_step,
                            discharge_config.ch1.num_steps > 0 ? 
                            discharge_config.ch1.duty_cycles[current_step % discharge_config.ch1.num_steps] : 0.0f,
@@ -172,7 +172,7 @@ void process_discharge_step_command(const char* command) {
     // Parse step duration
     uint32_t step_ms;
     if (sscanf(cmd_copy, "DISCHARGE_STEP %lu", &step_ms) != 1 || step_ms == 0) {
-        printf("Error: Invalid step duration\n");
+        printf("[ERROR] Invalid step duration\n");
         return;
     }
     
@@ -229,13 +229,13 @@ void process_discharge_step_command(const char* command) {
     }
     
     discharge_config.enabled = (discharge_config.ch1.num_steps > 0 || discharge_config.ch2.num_steps > 0);
-    printf("Sequence configured: %lu ms steps, CH1=%d steps, CH2=%d steps\n", 
+    printf("[INFO] Sequence configured: %lu ms steps, CH1=%d steps, CH2=%d steps\n", 
            step_ms, discharge_config.ch1.num_steps, discharge_config.ch2.num_steps);
 }
 
 void start_csv_input(uint32_t step_duration) {
     if (step_duration == 0) {
-        printf("Error: Invalid step duration\n");
+        printf("[ERROR] Invalid step duration\n");
         return;
     }
     
@@ -244,7 +244,7 @@ void start_csv_input(uint32_t step_duration) {
     discharge_config.ch2.num_steps = 0;
     csv_input_mode = true;
     
-    printf("CSV mode started. Enter 'CH1_duty,CH2_duty' per line. Send 'DISCHARGE_CSV_END' to finish.\n");
+    printf("[COMMAND] CSV mode started. Enter 'CH1_duty,CH2_duty' per line. Send 'DISCHARGE_CSV_END' to finish.\n");
 }
 
 void process_csv_line(const char* line) {
@@ -263,7 +263,7 @@ void end_csv_input(void) {
     csv_input_mode = false;
     discharge_config.enabled = (discharge_config.ch1.num_steps > 0 || discharge_config.ch2.num_steps > 0);
     
-    printf("CSV input finished. CH1=%d steps, CH2=%d steps\n", 
+    printf("[COMMAND] CSV input finished. CH1=%d steps, CH2=%d steps\n", 
            discharge_config.ch1.num_steps, discharge_config.ch2.num_steps);
 }
 
@@ -289,7 +289,7 @@ bool process_discharge_command(const char* command) {
         // Only print if the state actually changes
         if (discharge_config.debug_mode != new_debug_mode) {
             discharge_config.debug_mode = new_debug_mode;
-            printf("Debug mode: %s\n", discharge_config.debug_mode ? "ON" : "OFF");
+            printf("[DEBUG] Debug mode: %s\n", discharge_config.debug_mode ? "ON" : "OFF");
         }
         return true;
     } else if (strncmp(command, "DISCHARGE_TRIGGER ", 18) == 0) {
@@ -298,16 +298,16 @@ bool process_discharge_command(const char* command) {
             // Only print if the state actually changes
             if (discharge_config.manual_trigger != new_trigger) {
                 discharge_config.manual_trigger = new_trigger;
-                printf("Manual trigger: %s\n", discharge_config.manual_trigger ? "ON" : "OFF");
+                printf("[DEBUG] Manual trigger: %s\n", discharge_config.manual_trigger ? "ON" : "OFF");
             }
         } else {
-            printf("Debug mode required for manual trigger\n");
+            printf("[ERROR] Debug mode required for manual trigger\n");
         }
         return true;
     } else if (strcmp(command, "DISCHARGE_TRIGGER_STATUS") == 0) {
         bool hw_trigger = gpio_get(TRIGGER_PIN);
         bool effective_trigger = discharge_config.debug_mode ? discharge_config.manual_trigger : hw_trigger;
-        printf("Hardware trigger: %s, Debug mode: %s, Manual trigger: %s, Effective: %s\n",
+        printf("[INFO] Hardware trigger: %s, Debug mode: %s, Manual trigger: %s, Effective: %s\n",
                hw_trigger ? "HIGH" : "LOW",
                discharge_config.debug_mode ? "ON" : "OFF",
                discharge_config.manual_trigger ? "ON" : "OFF",
@@ -318,11 +318,11 @@ bool process_discharge_command(const char* command) {
         // Only print if the state actually changes
         if (discharge_config.verbose != new_verbose) {
             discharge_config.verbose = new_verbose;
-            printf("Verbose mode: %s\n", discharge_config.verbose ? "ON" : "OFF");
+            printf("[DEBUG] Verbose mode: %s\n", discharge_config.verbose ? "ON" : "OFF");
         }
         return true;
     } else if (strcmp(command, "DISCHARGE_STATUS") == 0) {
-        printf("Discharge Status:\n");
+        printf("[COMMAND] Discharge Status:\n");
         printf("  Step duration: %lu ms\n", discharge_config.step_duration_ms);
         printf("  CH1 steps: %d\n", discharge_config.ch1.num_steps);
         printf("  CH2 steps: %d\n", discharge_config.ch2.num_steps);
@@ -349,6 +349,7 @@ void discharge_system_init(void) {
 
 // --- Help Function ---
 void print_discharge_help(void) {
+    printf("[COMMAND]\n");
     printf("--- Discharge Control Help ---\n");
     printf("  DISCHARGE_STEP <ms> CH1 <d1,..> [CH2 <d1,..>]\n");
     printf("    Defines a sequence in a single line.\n\n");
