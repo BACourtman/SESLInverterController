@@ -343,8 +343,8 @@ void discharge_system_init(void) {
     
     // Launch core1 real-time loop
     multicore_launch_core1(core1_discharge_loop);
-    printf("Core 1 launched for discharge PWM control\n");
-    printf("Use DISCHARGE_HELP for commands.\n");
+    printf("[INFO] Core 1 launched for discharge PWM control\n");
+    printf("[INFO] Use DISCHARGE_HELP for commands.\n");
 }
 
 // --- Help Function ---
