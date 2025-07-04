@@ -10,7 +10,7 @@
 #include "Helpers/adc_monitor.h"
 #include "Helpers/shutdown.h"
 #include "Helpers/serial_cmd.h"
-#include "Helpers/GPIO_pwm_discharge.h"
+#include "Helpers/GPIO_control_V2.h"
 
 // SPI Defines for MAX31855K Thermocouple Interface
 #define SPI_PORT spi1
@@ -51,13 +51,9 @@ int main()
     pwm_control_init(frequency, duty_cycle);
     printf("PIO PWM Control Initialized\n");
     
-    // Initialize GPIO PWM Discharge system
-    pwm_discharge_init();
+    // Initialize discharge system (this launches core1)
+    discharge_system_init();
     printf("GPIO PWM Discharge System Initialized\n");
-    
-    // Launch Core 1 for discharge PWM control
-    multicore_launch_core1(core1_entry);
-    printf("Core 1 launched for discharge PWM control\n");
     
     absolute_time_t last_log = get_absolute_time();
     absolute_time_t last_print = get_absolute_time();
@@ -113,7 +109,6 @@ int main()
             printf("EMERGENCY: Overcurrent detected! Shutting down...\n");
             shutdown();
         }
-        
         sleep_ms(5); // Adjust as needed for Core 0 loop timing
     }
 }

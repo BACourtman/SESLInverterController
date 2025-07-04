@@ -41,7 +41,7 @@ add_executable(InverterController
     Helpers/adc_monitor.c
     Helpers/shutdown.c
     Helpers/serial_cmd.c
-    Helpers/GPIO_pwm_discharge.c  # Add this line
+    Helpers/GPIO_control_V2.c
 )
 
 pico_set_program_name(InverterController "InverterController")

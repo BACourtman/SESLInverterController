@@ -12,6 +12,9 @@ const uint CS_PINS[NUM_THERMOCOUPLES] = {9, 13, 14, 15};
 TCLogEntry tc_log[LOG_SIZE];
 int log_head = 0;
 
+// Add this static variable for consecutive OTP tracking
+static int otp_consecutive_count[NUM_THERMOCOUPLES] = {0};
+
 void max31855k_init_cs_pins(void) {
     for (int i = 0; i < NUM_THERMOCOUPLES; ++i) {
         gpio_set_function(CS_PINS[i], GPIO_FUNC_SIO);
@@ -59,11 +62,21 @@ void print_tc_log_csv(void) {
     }
 }
 
+// Modified function with consecutive checking
 bool check_overtemperature(float temps[NUM_THERMOCOUPLES]) {
     for (int i = 0; i < NUM_THERMOCOUPLES; ++i) {
         if (temps[i] > OTP_LIMIT) {
-            printf("Overtemperature detected on TC%d: %.2f C\n", i, temps[i]);
-            return true;
+            otp_consecutive_count[i]++; // Increment consecutive count
+            if (otp_consecutive_count[i] >= OTP_CONSECUTIVE_THRESHOLD) {
+                printf("CRITICAL: TC%d overtemperature for %d consecutive readings: %.2f C\n", 
+                       i, otp_consecutive_count[i], temps[i]);
+                return true; // Trigger shutdown
+            } else {
+                printf("WARNING: TC%d overtemperature reading %d/%d: %.2f C\n", 
+                       i, otp_consecutive_count[i], OTP_CONSECUTIVE_THRESHOLD, temps[i]);
+            }
+        } else {
+            otp_consecutive_count[i] = 0; // Reset count if temperature is normal
         }
     }
     return false;

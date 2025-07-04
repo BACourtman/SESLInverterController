@@ -38,20 +38,20 @@ extern volatile bool trigger_active;
 void pwm_discharge_init(void);
 void core1_entry(void);
 void set_discharge_sequence_step(const char* command);
-void start_discharge_csv_mode(uint32_t step_duration_ms);
-bool add_discharge_csv_line(const char* line);
-void end_discharge_csv_mode(void);
-void print_discharge_help(void);
-void start_discharge_sequence(void);
-void stop_discharge_sequence(void);
-void set_pwm_duty_cycle(float duty1, float duty2);
-float get_current_duty_for_channel(int channel, uint32_t elapsed_ms);
-void calculate_sequence_durations(void);
+
+// CSV input functions
+bool is_in_csv_mode(void);
+void start_csv_input(uint32_t step_duration);
+void process_csv_line(const char* line);
+void end_csv_input(void);
+
+void handle_discharge_trigger(void);
 
 // Debug/Manual control functions
 void set_discharge_debug_mode(bool enable);
 void set_manual_discharge_trigger(bool state);
 bool get_effective_discharge_trigger_state(void);
 void print_discharge_trigger_status(void);
+void set_discharge_verbose_mode(bool enable);
 
 #endif
