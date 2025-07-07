@@ -1,0 +1,75 @@
+.define PIN_TRIGGER 6
+
+.program phase_pwm_dynamic
+    pull block         ; Pull phase_delay (cycles) from TX FIFO
+    mov x, osr         ; x = phase_delay
+
+    pull block         ; Pull initial high_time (cycles) from TX FIFO
+    mov y, osr         ; y = high_time
+
+    pull block         ; Pull initial low_time (cycles) from TX FIFO
+    mov isr, osr       ; isr = low_time
+
+wait_trigger:
+    wait 1 gpio PIN_TRIGGER   ; Wait for trigger pin to go high
+
+    mov osr, x         ; Restore phase_delay to osr
+phase_delay_loop:
+    jmp x-- phase_delay_loop  ; Wait for phase offset
+
+main_loop:
+    ; Check if trigger is still high before starting PWM cycle
+    jmp pin do_pwm
+    jmp finished
+
+do_pwm:
+    ; Check for new duty cycle data (non-blocking)
+    pull noblock       ; Try to pull new high_time
+    jmp !osre update_high_time  ; If data available, update
+    jmp continue_pwm
+
+update_high_time:
+    mov y, osr         ; Update high_time
+    pull noblock       ; Try to pull new low_time
+    jmp !osre update_low_time
+    jmp continue_pwm
+
+update_low_time:
+    mov isr, osr       ; Update low_time
+
+continue_pwm:
+    mov osr, y         ; Load current high_time
+    set pins, 1        ; Set output high
+high_loop:
+    jmp y-- high_loop  ; Wait for high time
+
+    mov osr, isr       ; Load current low_time
+    mov y, osr
+    set pins, 0        ; Set output low
+low_loop:
+    jmp y-- low_loop   ; Wait for low time
+
+    ; Restore y for next cycle
+    mov osr, isr       ; Get low_time
+    mov y, osr         ; Restore y
+    mov osr, y         ; Get high_time back
+    mov y, osr
+
+    jmp main_loop
+
+finished:
+    set x, 1
+    push               ; Signal done to main program
+    jmp finished
+
+% c-sdk {
+void phase_pwm_dynamic_program_init(PIO pio, uint sm, uint offset, uint pin, uint trigger_pin) {
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, trigger_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_sm_config c = phase_pwm_dynamic_program_get_default_config(offset);
+    sm_config_set_set_pins(&c, pin, 1);
+    sm_config_set_in_pins(&c, trigger_pin);
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
