@@ -1,56 +1,75 @@
 .define PIN_TRIGGER 6
 
 .program phase_pwm
-    pull block         ; Pull phase_delay (cycles) from TX FIFO
-    mov x, osr         ; x = phase_delay
+.side_set 1 opt
 
-    pull block         ; Pull high_time (cycles) from TX FIFO
-    mov y, osr         ; y = high_time
+; Wait for trigger pin to go high
+wait_for_trigger:
+    wait 1 pin 0                    ; Wait for trigger pin to go HIGH
+    
+    ; Get timing parameters from FIFO
+    pull block                      ; Get phase delay
+    mov x, osr                      ; Store phase delay in x
+    pull block                      ; Get high time  
+    mov y, osr                      ; Store high time in y
+    pull block                      ; Get low time (keep in OSR)
 
-    pull block         ; Pull low_time (cycles) from TX FIFO
-    mov isr, osr       ; isr = low_time (use isr as temp register)
-
-wait_trigger:
-    wait 1 gpio PIN_TRIGGER   ; Wait for trigger pin to go high
-
-    mov osr, x         ; Restore phase_delay to osr
 phase_delay_loop:
-    jmp x-- phase_delay_loop  ; Wait for phase offset
+    jmp x-- phase_delay_loop        ; Wait for phase delay
+    
+pulse_loop:
+    ; Check if trigger is still high before starting pulse
+    jmp pin pulse_high              ; If trigger still high, continue
+    jmp wait_for_trigger            ; If trigger low, go back to waiting
+    
+pulse_high:
+    set pins, 1                     ; Set output HIGH
+    mov x, y                        ; Load high time counter
+    
+high_time_loop:
+    jmp pin high_time_check         ; Check if trigger still high
+    jmp cleanup                     ; If trigger low, cleanup and restart
+high_time_check:
+    jmp x-- high_time_loop          ; Continue high time if trigger still high
+    
+    ; Now do low time
+    set pins, 0                     ; Set output LOW  
+    mov x, osr                      ; Load low time counter from OSR
+    
+low_time_loop:
+    jmp pin low_time_check          ; Check if trigger still high
+    jmp cleanup                     ; If trigger low, cleanup and restart  
+low_time_check:
+    jmp x-- low_time_loop           ; Continue low time if trigger still high
+    
+    jmp pulse_loop                  ; Repeat pulse while trigger is high
 
-main_loop:
-    ; Check if trigger is still high before starting PWM cycle
-    jmp pin do_pwm
-    jmp finished
-
-do_pwm:
-    mov osr, y         ; Restore high_time to osr
-    mov y, osr
-    set pins, 1        ; Set output high
-high_loop:
-    jmp y-- high_loop  ; Wait for high time
-
-    mov osr, isr       ; Restore low_time to osr
-    mov y, osr
-    set pins, 0        ; Set output low
-low_loop:
-    jmp y-- low_loop   ; Wait for low time
-
-    ; After one PWM cycle, check trigger again
-    jmp main_loop
-
-finished:
-    set x, 1
-    push               ; Signal done to main program
-    jmp finished       ; Halt here forever (SM is now "free" for C to reconfigure)
+cleanup:
+    set pins, 0                     ; Ensure output is LOW
+    jmp wait_for_trigger            ; Go back to waiting for trigger
 
 % c-sdk {
 void phase_pwm_program_init(PIO pio, uint sm, uint offset, uint pin, uint trigger_pin) {
+    // Initialize the output pin
     pio_gpio_init(pio, pin);
-    pio_gpio_init(pio, trigger_pin);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true); // Set pin as output
+    
+    // Initialize the trigger pin (same for all SMs)
+    pio_gpio_init(pio, trigger_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, trigger_pin, 1, false); // Set trigger pin as input
+    
     pio_sm_config c = phase_pwm_program_get_default_config(offset);
+    
+    // Configure output pin for 'set pins' instruction
     sm_config_set_set_pins(&c, pin, 1);
-    sm_config_set_in_pins(&c, trigger_pin); // For wait/pin
+    
+    // Configure input pin for 'wait' and 'jmp pin' instructions
+    sm_config_set_in_pins(&c, trigger_pin);
+    sm_config_set_jmp_pin(&c, trigger_pin);
+    
+    // Set clock divider to 1.0 (125MHz)
+    sm_config_set_clkdiv(&c, 1.0f);
+    
     pio_sm_init(pio, sm, offset, &c);
 }
 %}

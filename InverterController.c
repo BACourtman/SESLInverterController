@@ -71,7 +71,7 @@ int main()
         bool params_updated = process_serial_commands(&frequency, &duty_cycle, &auto_tc_print);
         
         // 1.2 Push frequency and duty cycle to PIO state machines if they are free
-        process_pio_state_machines(pio0, frequency, duty_cycle);
+        // process_pio_state_machines(pio0, frequency, duty_cycle);
         
         // 2. Read thermocouples
         // 2.1 Fast overtemperature protection (read every loop)
@@ -109,6 +109,7 @@ int main()
             printf("[ALERT] EMERGENCY: Overcurrent detected! Shutting down...\n");
             shutdown();
         }
+
         sleep_ms(5); // Adjust as needed for Core 0 loop timing
     }
 }

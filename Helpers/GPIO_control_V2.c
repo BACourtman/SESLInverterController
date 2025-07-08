@@ -4,6 +4,7 @@
 #include "GPIO_control_V2.h"
 #include "hardware/pwm.h"
 #include "hardware/gpio.h"
+#include "hardware/clocks.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include <stdio.h>
@@ -49,8 +50,19 @@ void discharge_pwm_init(void) {
     chan_ch1 = pwm_gpio_to_channel(PWM_PIN_CH1);
     chan_ch2 = pwm_gpio_to_channel(PWM_PIN_CH2);
     
-    // Configure for 50kHz PWM: 125MHz / 2500 = 50kHz
-    const uint16_t wrap_value = 2499; // 0-2499 = 2500 counts
+    // Get actual system clock frequency instead of assuming 125MHz
+    uint32_t sys_clk_hz = clock_get_hz(clk_sys);
+    float clk_freq = (float)sys_clk_hz;
+    
+    // Calculate wrap value for 50kHz PWM based on actual clock frequency
+    const uint32_t target_freq = 50000; // 50kHz
+    const uint16_t wrap_value = (uint16_t)((clk_freq / target_freq) - 1);
+    
+    printf("[DEBUG] GPIO PWM Clock Configuration:\n");
+    printf("[DEBUG]   System clock: %.0f Hz\n", clk_freq);
+    printf("[DEBUG]   Target PWM frequency: %lu Hz\n", target_freq);
+    printf("[DEBUG]   Calculated wrap value: %d\n", wrap_value);
+    printf("[DEBUG]   Actual PWM frequency: %.2f Hz\n", clk_freq / (wrap_value + 1));
     
     pwm_config config = pwm_get_default_config();
     pwm_config_set_clkdiv(&config, 1.0f);
@@ -68,12 +80,17 @@ void discharge_pwm_init(void) {
     gpio_set_dir(TRIGGER_PIN, GPIO_IN);
     gpio_pull_down(TRIGGER_PIN);
     
-    printf("[INFO] Discharge PWM initialized at 50kHz on pins %d and %d\n", PWM_PIN_CH1, PWM_PIN_CH2);
+    printf("[INFO] Discharge PWM initialized at %.2f Hz on pins %d and %d\n", 
+           clk_freq / (wrap_value + 1), PWM_PIN_CH1, PWM_PIN_CH2);
 }
 
 // --- Core1 Real-time Loop ---
 void core1_discharge_loop(void) {
-    const uint16_t WRAP_VALUE = 2499;  // Updated for 50kHz
+    // Calculate wrap value dynamically based on actual clock frequency
+    uint32_t sys_clk_hz = clock_get_hz(clk_sys);
+    const uint32_t target_freq = 50000; // 50kHz
+    const uint16_t WRAP_VALUE = (uint16_t)((sys_clk_hz / target_freq) - 1);
+    
     uint32_t cycle_start_time = 0;
     uint32_t current_step = 0;
     uint32_t step_start_time = 0;
@@ -159,7 +176,7 @@ void core1_discharge_loop(void) {
             }
         }
         
-        sleep_us(20); // 50kHz update rate (20μs period)
+        sleep_us(20); // Update timing - may need adjustment based on actual clock
     }
 }
 

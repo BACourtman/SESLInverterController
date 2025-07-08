@@ -84,7 +84,7 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                 if (process_discharge_command(cmd)) {
                     return false; // Command was handled by discharge system
                 }
-            } else if (strncmp(cmd, "FREQ", 4) == 0) {
+            } else if (strncmp(cmd, "FREQ", 4) == 0 || strncmp(cmd, "FREQUENCY", 9) == 0) {
                 float new_freq, new_duty;
                 if (sscanf(cmd + 4, "%f %f", &new_freq, &new_duty) == 2) {
                     if (new_freq <= 0 || new_freq >= 1e6 || new_duty < 0 || new_duty > 0.5) {
@@ -92,6 +92,7 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                     } else {
                         *frequency = new_freq;
                         *duty_cycle = new_duty;
+                        update_pwm_parameters(*frequency, *duty_cycle); // Update PWM with new parameters
                         printf("[COMMAND] Updated: Frequency = %.2f Hz, Duty Cycle = %.2f\n", *frequency, *duty_cycle);
                         updated = true;
                     }
