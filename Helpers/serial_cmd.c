@@ -85,19 +85,39 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                     return false; // Command was handled by discharge system
                 }
             } else if (strncmp(cmd, "FREQ", 4) == 0 || strncmp(cmd, "FREQUENCY", 9) == 0) {
-                float new_freq, new_duty;
-                if (sscanf(cmd + 4, "%f %f", &new_freq, &new_duty) == 2) {
-                    if (new_freq <= 0 || new_freq >= 1e6 || new_duty < 0 || new_duty > 0.5) {
-                        printf("[ERROR] Invalid frequency or duty cycle values.\n");
+                float new_freq, new_duty1, new_duty2;
+                int parsed = sscanf(cmd + 4, "%f %f %f", &new_freq, &new_duty1, &new_duty2);
+                
+                if (parsed == 3) {
+                    // All three parameters provided
+                    if (new_freq <= 0 || new_freq >= 1e6 || new_duty1 < 0 || new_duty1 > 1.0 || new_duty2 < 0 || new_duty2 > 1.0) {
+                        printf("[ERROR] Invalid parameters.\n");
+                        printf("[ERROR] Usage: FREQ <frequency> <duty_pair1> <duty_pair2>\n");
                     } else {
                         *frequency = new_freq;
-                        *duty_cycle = new_duty;
-                        update_pwm_parameters(*frequency, *duty_cycle); // Update PWM with new parameters
-                        printf("[COMMAND] Updated: Frequency = %.2f Hz, Duty Cycle = %.2f\n", *frequency, *duty_cycle);
+                        *duty_cycle = new_duty1;  // Store first duty cycle for compatibility
+                        update_pwm_parameters(*frequency, new_duty1, new_duty2);
+                        printf("[COMMAND] Updated: Frequency = %.2f Hz, Pair1 = %.2f, Pair2 = %.2f\n", 
+                               *frequency, new_duty1, new_duty2);
+                        updated = true;
+                    }
+                } else if (parsed == 2) {
+                    // Only frequency and one duty cycle provided - use same for both pairs
+                    if (new_freq <= 0 || new_freq >= 1e6 || new_duty1 < 0 || new_duty1 > 1.0) {
+                        printf("[ERROR] Invalid parameters.\n");
+                    } else {
+                        *frequency = new_freq;
+                        *duty_cycle = new_duty1;
+                        update_pwm_parameters(*frequency, new_duty1, new_duty1);  // Same duty for both pairs
+                        printf("[COMMAND] Updated: Frequency = %.2f Hz, Both pairs = %.2f\n", *frequency, new_duty1);
                         updated = true;
                     }
                 } else {
-                    printf("Invalid FREQ command. Usage: FREQ <frequency> <duty_cycle>\n");
+                    printf("[ERROR] Invalid FREQ command.\n");
+                    printf("[ERROR] Usage: FREQ <frequency> <duty_pair1> <duty_pair2>\n");
+                    printf("[ERROR] Usage: FREQ <frequency> <duty_both_pairs>\n");
+                    printf("[ERROR] Example: FREQ 100000 0.5 0.3\n");
+                    printf("[ERROR] Example: FREQ 100000 0.5\n");
                 }
             } else if (strncmp(cmd, "TC_ON", 5) == 0) {
                 int tcon_val;

@@ -48,7 +48,7 @@ int main()
     printf("[INFO] ADC Initialized\n");
     
     // Initialize PWM Control (PIO state machines)
-    pwm_control_init(frequency, duty_cycle);
+    pwm_control_init(frequency, duty_cycle, duty_cycle);
     printf("[INFO] PIO PWM Control Initialized\n");
     
     // Initialize discharge system (this launches core1)

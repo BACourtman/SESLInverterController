@@ -9,8 +9,8 @@
 #define LOG_SIZE 600
 #define LOG_INTERVAL_MS 100
 #define PRINT_INTERVAL_MS 1000
-#define OTP_LIMIT 90.0f
-#define OTP_CONSECUTIVE_THRESHOLD 2 // Number of consecutive readings required to trigger shutdown
+#define OTP_LIMIT 5000.0f
+#define OTP_CONSECUTIVE_THRESHOLD 20 // Number of consecutive readings required to trigger shutdown
 
 typedef struct {
     uint32_t timestamp_ms;

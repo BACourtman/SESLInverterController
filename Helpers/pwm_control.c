@@ -19,9 +19,9 @@ static float current_duty_cycle = 0;
 static bool pio_debug_mode = false;
 static bool manual_pio_trigger_state = false;
 
-void pwm_control_init(float frequency, float duty_cycle) {
+void pwm_control_init(float frequency, float duty_cycle_pair1, float duty_cycle_pair2) {
     current_frequency = frequency;
-    current_duty_cycle = duty_cycle;
+    current_duty_cycle = duty_cycle_pair1;  // Store first duty cycle for compatibility
     
     // Enable PIO Program
     pio = pio0;
@@ -41,17 +41,17 @@ void pwm_control_init(float frequency, float duty_cycle) {
         pio_sm_set_enabled(pio, i, true);
     }
 
-    update_pwm_parameters(frequency, duty_cycle);
+    update_pwm_parameters(frequency, duty_cycle_pair1, duty_cycle_pair2);
     
     printf("[INFO] Loaded PIO program at %d\n", offset);
     printf("[INFO] 4 State machines configured and ENABLED:\n");
-    printf("[INFO]   SM0 -> Pin %d (trigger: Pin %d)\n", PWM_PINS[0], TRIGGER_PIN);
-    printf("[INFO]   SM1 -> Pin %d (trigger: Pin %d)\n", PWM_PINS[1], TRIGGER_PIN);
-    printf("[INFO]   SM2 -> Pin %d (trigger: Pin %d)\n", PWM_PINS[2], TRIGGER_PIN);
-    printf("[INFO]   SM3 -> Pin %d (trigger: Pin %d)\n", PWM_PINS[3], TRIGGER_PIN);
+    printf("[INFO]   SM0 -> Pin %d (trigger: Pin %d) - Pair 1\n", PWM_PINS[0], TRIGGER_PIN);
+    printf("[INFO]   SM1 -> Pin %d (trigger: Pin %d) - Pair 2\n", PWM_PINS[1], TRIGGER_PIN);
+    printf("[INFO]   SM2 -> Pin %d (trigger: Pin %d) - Pair 1\n", PWM_PINS[2], TRIGGER_PIN);
+    printf("[INFO]   SM3 -> Pin %d (trigger: Pin %d) - Pair 2\n", PWM_PINS[3], TRIGGER_PIN);
 }
 
-void update_pwm_parameters(float frequency, float duty_cycle) {
+void update_pwm_parameters(float frequency, float duty_cycle_pair1, float duty_cycle_pair2) {
     // QUICK FIX: Double the frequency to compensate for PIO overhead
     float adjusted_frequency = frequency * 2.0f;
     float period_s = 1.0f / adjusted_frequency;
@@ -60,9 +60,11 @@ void update_pwm_parameters(float frequency, float duty_cycle) {
     uint32_t sys_clk_hz = clock_get_hz(clk_sys);
     float clk_freq = (float)sys_clk_hz;
     
-    // Calculate actual high and low times within the period
-    float high_time_s = period_s * duty_cycle;
-    float low_time_s = period_s * (1.0f - duty_cycle);
+    // Calculate actual high and low times for both duty cycles
+    float high_time_s_pair1 = period_s * duty_cycle_pair1;
+    float low_time_s_pair1 = period_s * (1.0f - duty_cycle_pair1);
+    float high_time_s_pair2 = period_s * duty_cycle_pair2;
+    float low_time_s_pair2 = period_s * (1.0f - duty_cycle_pair2);
     
     // Phase shift: 90 degrees = 1/4 of ORIGINAL period (not adjusted period)
     float original_period_s = 1.0f / frequency;  // Use original frequency for phase shift
@@ -73,11 +75,14 @@ void update_pwm_parameters(float frequency, float duty_cycle) {
     printf("[DEBUG] System clock frequency: %.0f Hz\n", clk_freq);
     printf("[DEBUG] Input frequency: %.2f Hz\n", frequency);
     printf("[DEBUG] Adjusted frequency (2x): %.2f Hz\n", adjusted_frequency);
-    printf("[DEBUG] Input duty cycle: %.2f\n", duty_cycle);
+    printf("[DEBUG] Duty cycle pair 1 (SM0,SM2): %.2f\n", duty_cycle_pair1);
+    printf("[DEBUG] Duty cycle pair 2 (SM1,SM3): %.2f\n", duty_cycle_pair2);
     printf("[DEBUG] Original period: %.6f s (%.2f μs)\n", original_period_s, original_period_s * 1000000.0f);
     printf("[DEBUG] Adjusted period: %.6f s (%.2f μs)\n", period_s, period_s * 1000000.0f);
-    printf("[DEBUG] High time: %.6f s (%.2f μs)\n", high_time_s, high_time_s * 1000000.0f);
-    printf("[DEBUG] Low time: %.6f s (%.2f μs)\n", low_time_s, low_time_s * 1000000.0f);
+    printf("[DEBUG] High time pair 1: %.6f s (%.2f μs)\n", high_time_s_pair1, high_time_s_pair1 * 1000000.0f);
+    printf("[DEBUG] Low time pair 1: %.6f s (%.2f μs)\n", low_time_s_pair1, low_time_s_pair1 * 1000000.0f);
+    printf("[DEBUG] High time pair 2: %.6f s (%.2f μs)\n", high_time_s_pair2, high_time_s_pair2 * 1000000.0f);
+    printf("[DEBUG] Low time pair 2: %.6f s (%.2f μs)\n", low_time_s_pair2, low_time_s_pair2 * 1000000.0f);
     printf("[DEBUG] Phase shift: %.6f s (%.2f μs)\n", phase_shift_s, phase_shift_s * 1000000.0f);
     
     // Clear FIFOs (SMs stay enabled and running)
@@ -89,6 +94,12 @@ void update_pwm_parameters(float frequency, float duty_cycle) {
     for (int i = 0; i < 4; ++i) {
         float phase_delay_s = i * phase_shift_s;
         uint32_t phase_delay = (uint32_t)(phase_delay_s * clk_freq);
+        
+        // Choose duty cycle based on SM number
+        float duty_cycle = (i % 2 == 0) ? duty_cycle_pair1 : duty_cycle_pair2;  // SM0,2 use pair1, SM1,3 use pair2
+        float high_time_s = period_s * duty_cycle;
+        float low_time_s = period_s * (1.0f - duty_cycle);
+        
         uint32_t high_time = (uint32_t)(high_time_s * clk_freq);
         uint32_t low_time = (uint32_t)(low_time_s * clk_freq);
 
@@ -97,10 +108,11 @@ void update_pwm_parameters(float frequency, float duty_cycle) {
         if (high_time == 0) high_time = 1;
         if (low_time == 0) low_time = 1;
 
-        printf("[DEBUG] SM%d: phase_delay=%lu cycles (%.2f μs), high_time=%lu cycles (%.2f μs), low_time=%lu cycles (%.2f μs)\n", 
+        printf("[DEBUG] SM%d: phase_delay=%lu cycles (%.2f μs), high_time=%lu cycles (%.2f μs), low_time=%lu cycles (%.2f μs), duty=%.2f\n", 
                i, phase_delay, (float)phase_delay / clk_freq * 1000000.0f,
                high_time, (float)high_time / clk_freq * 1000000.0f,
-               low_time, (float)low_time / clk_freq * 1000000.0f);
+               low_time, (float)low_time / clk_freq * 1000000.0f,
+               duty_cycle);
 
         // Calculate actual output frequency (only high + low time matters)
         uint32_t pulse_period_cycles = high_time + low_time;
@@ -115,9 +127,10 @@ void update_pwm_parameters(float frequency, float duty_cycle) {
     }
     
     current_frequency = frequency;
-    current_duty_cycle = duty_cycle;
+    current_duty_cycle = duty_cycle_pair1;  // Store first duty cycle for compatibility
     
-    printf("[INFO] PWM parameters updated: %.2f Hz, %.2f%% duty\n", frequency, duty_cycle * 100);
+    printf("[INFO] PWM parameters updated: %.2f Hz, Pair1 %.2f%%, Pair2 %.2f%%\n", 
+           frequency, duty_cycle_pair1 * 100, duty_cycle_pair2 * 100);
     printf("[INFO] FIFOs filled with fresh parameters\n");
     printf("[INFO] State machines are RUNNING and waiting for triggers\n");
 }
