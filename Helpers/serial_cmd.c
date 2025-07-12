@@ -6,6 +6,7 @@
 #include "GPIO_control_V2.h"
 #include "pwm_control.h"  // Add this include
 #include "pico/stdlib.h"
+#include "shutdown.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -27,6 +28,7 @@ void print_help(void) {
     printf("  PIO_DEBUG 0|1                   - Enable/disable manual PIO trigger\n");
     printf("  PIO_TRIGGER 0|1                 - Set manual PIO trigger (debug mode)\n");
     printf("  PIO_TRIGGER_STATUS              - Show PIO trigger status\n");
+    printf("  RELAY 0|1                       - Toggle relay state\n");
     printf("  HELP                            - Show this help message\n");
 }
 
@@ -167,7 +169,14 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
             else if (strcmp(cmd, "PIO_TRIGGER_STATUS") == 0) {
                 print_pio_trigger_status();
             }
-            else {
+            else if (strncmp(cmd, "RELAY", 5) == 0) {
+                int relay_state;
+                if (sscanf(cmd + 6, "%d", &relay_state) == 1 && (relay_state == 0 || relay_state == 1)) {
+                    set_relay(relay_state);
+                } else {
+                    printf("[ERROR] Invalid RELAY command. Usage: RELAY 0|1\n");
+                }
+            } else {
                 printf("[ERROR] Unrecognized command: %s\n", cmd);
                 printf("Type HELP for a list of commands.\n");
             }

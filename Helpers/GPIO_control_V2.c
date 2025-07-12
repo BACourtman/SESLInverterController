@@ -31,7 +31,10 @@ static struct {
     bool verbose;
     bool debug_mode;
     bool manual_trigger;
-} discharge_config = {0};
+    bool invert_output;  // Add this line
+} discharge_config = {
+    .invert_output = true  // Default to inverting
+};
 
 static bool csv_input_mode = false;
 static uint slice_ch1, slice_ch2;
@@ -71,10 +74,11 @@ void discharge_pwm_init(void) {
     pwm_init(slice_ch1, &config, true);
     pwm_init(slice_ch2, &config, true);
     
-    // Set initial duty to 0
-    pwm_set_chan_level(slice_ch1, chan_ch1, 0);
-    pwm_set_chan_level(slice_ch2, chan_ch2, 0);
-    
+    // Set initial duty based on inversion setting
+    uint16_t initial_level = discharge_config.invert_output ? wrap_value : 0;
+    pwm_set_chan_level(slice_ch1, chan_ch1, initial_level);
+    pwm_set_chan_level(slice_ch2, chan_ch2, initial_level);
+
     // Setup trigger pin
     gpio_init(TRIGGER_PIN);
     gpio_set_dir(TRIGGER_PIN, GPIO_IN);
@@ -159,7 +163,11 @@ void core1_discharge_loop(void) {
             if (discharge_config.ch1.num_steps > 0) {
                 uint32_t ch1_step = current_step % discharge_config.ch1.num_steps;
                 float duty = discharge_config.ch1.duty_cycles[ch1_step];
-                uint16_t level = (uint16_t)(duty * WRAP_VALUE);
+                
+                // Apply inversion if enabled
+                float final_duty = discharge_config.invert_output ? (1.0f - duty) : duty;
+                uint16_t level = (uint16_t)(final_duty * WRAP_VALUE);
+                
                 pwm_set_chan_level(slice_ch1, chan_ch1, level);
             } else {
                 pwm_set_chan_level(slice_ch1, chan_ch1, 0);
@@ -169,7 +177,11 @@ void core1_discharge_loop(void) {
             if (discharge_config.ch2.num_steps > 0) {
                 uint32_t ch2_step = current_step % discharge_config.ch2.num_steps;
                 float duty = discharge_config.ch2.duty_cycles[ch2_step];
-                uint16_t level = (uint16_t)(duty * WRAP_VALUE);
+                
+                // Apply inversion if enabled
+                float final_duty = discharge_config.invert_output ? (1.0f - duty) : duty;
+                uint16_t level = (uint16_t)(final_duty * WRAP_VALUE);
+                
                 pwm_set_chan_level(slice_ch2, chan_ch2, level);
             } else {
                 pwm_set_chan_level(slice_ch2, chan_ch2, 0);
@@ -345,9 +357,19 @@ bool process_discharge_command(const char* command) {
         printf("  CH2 steps: %d\n", discharge_config.ch2.num_steps);
         printf("  Enabled: %s\n", discharge_config.enabled ? "YES" : "NO");
         printf("  Running: %s\n", sequence_running ? "YES" : "NO");
+        printf("  Output inversion: %s\n", discharge_config.invert_output ? "ENABLED" : "DISABLED");  // Add this line
         return true;
     } else if (strcmp(command, "DISCHARGE_HELP") == 0) {
         print_discharge_help();
+        return true;
+    } else if (strncmp(command, "DISCHARGE_INVERT ", 17) == 0) {
+        bool new_invert = (atoi(command + 17) != 0);
+        if (discharge_config.invert_output != new_invert) {
+            discharge_config.invert_output = new_invert;
+            printf("[COMMAND] Output inversion: %s\n", discharge_config.invert_output ? "ENABLED" : "DISABLED");
+            printf("[INFO] Example: Input 0.8 will now output %s\n", 
+                   discharge_config.invert_output ? "0.2 (20%)" : "0.8 (80%)");
+        }
         return true;
     }
     
@@ -374,6 +396,7 @@ void print_discharge_help(void) {
     printf("    Starts multi-line CSV input. Each line is 'CH1_duty,CH2_duty'.\n");
     printf("  DISCHARGE_CSV_END\n");
     printf("    Finishes CSV input and commits the sequence.\n\n");
+    printf("  DISCHARGE_INVERT <0|1>          - Toggle output inversion (0=normal, 1=inverted).\n");  // Add this line
     printf("  DISCHARGE_DEBUG <0|1>           - Enable/disable manual trigger override.\n");
     printf("  DISCHARGE_TRIGGER <0|1>         - Manually trigger sequence (requires debug mode).\n");
     printf("  DISCHARGE_TRIGGER_STATUS        - Show hardware and effective trigger status.\n");

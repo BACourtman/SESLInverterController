@@ -29,6 +29,10 @@ int main()
     }
     printf("[INFO] USB connected!\n");
 
+    // Initialize Relay
+    init_relay();
+    printf("[INFO] Relay initialized\n");
+    
     // Variables for frequency and duty cycle
     float frequency = 1.0e5f;   // Default 100 kHz
     float duty_cycle = 0.4f;    // Default 40%

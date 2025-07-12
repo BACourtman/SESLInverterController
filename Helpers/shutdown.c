@@ -9,6 +9,17 @@
 #include <stdio.h>
 #include <string.h>
 
+void init_relay(void){
+    gpio_init(SHUTDOWN_RELAY_PIN);
+    gpio_set_dir(SHUTDOWN_RELAY_PIN, GPIO_OUT);
+    gpio_put(SHUTDOWN_RELAY_PIN, 1);
+}
+
+void set_relay(int hilo) {
+    gpio_put(SHUTDOWN_RELAY_PIN, hilo);
+    printf("[INFO] Relay set to %s\n", hilo ? "ON" : "OFF");
+}
+
 void shutdown(void) {
     char cmd[16];
     printf("[ALERT] SYSTEM SHUTDOWN INITIATED\n");
@@ -28,7 +39,7 @@ void shutdown(void) {
     // 3. Trigger external relay if used
     gpio_init(SHUTDOWN_RELAY_PIN);
     gpio_set_dir(SHUTDOWN_RELAY_PIN, GPIO_OUT);
-    gpio_put(SHUTDOWN_RELAY_PIN, 1); // or 0, depending on your relay logic
+    gpio_put(SHUTDOWN_RELAY_PIN, 0); // or 0, depending on your relay logic
 
     printf("!!! SYSTEM SHUTDOWN: Overcurrent or Overtemperature detected !!!\n");
     printf("To reboot, power cycle the system\n");
