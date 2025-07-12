@@ -200,7 +200,7 @@ void process_discharge_step_command(const char* command) {
     
     // Parse step duration
     uint32_t step_ms;
-    if (sscanf(cmd_copy, "DISCHARGE_STEP %lu", &step_ms) != 1 || step_ms == 0) {
+    if (sscanf(cmd_copy, "DC_STEP %lu", &step_ms) != 1 || step_ms == 0) {
         printf("[ERROR] Invalid step duration\n");
         return;
     }
@@ -273,7 +273,7 @@ void start_csv_input(uint32_t step_duration) {
     discharge_config.ch2.num_steps = 0;
     csv_input_mode = true;
     
-    printf("[COMMAND] CSV mode started. Enter 'CH1_duty,CH2_duty' per line. Send 'DISCHARGE_CSV_END' to finish.\n");
+    printf("[COMMAND] CSV mode started. Enter 'CH1_duty,CH2_duty' per line. Send 'DC_CSV_END' to finish.\n");
 }
 
 void process_csv_line(const char* line) {
@@ -298,22 +298,22 @@ void end_csv_input(void) {
 
 // --- Main Command Handler ---
 bool process_discharge_command(const char* command) {
-    if (csv_input_mode && strcmp(command, "DISCHARGE_CSV_END") != 0) {
+    if (csv_input_mode && strcmp(command, "DC_CSV_END") != 0) {
         process_csv_line(command);
         return true;
     }
     
-    if (strncmp(command, "DISCHARGE_STEP", 14) == 0) {
+    if (strncmp(command, "DC_STEP", 14) == 0) {
         process_discharge_step_command(command);
         return true;
-    } else if (strncmp(command, "DISCHARGE_CSV ", 14) == 0) {
+    } else if (strncmp(command, "DC_CSV ", 14) == 0) {
         uint32_t step_ms = atoi(command + 14);
         start_csv_input(step_ms);
         return true;
-    } else if (strcmp(command, "DISCHARGE_CSV_END") == 0) {
+    } else if (strcmp(command, "DC_CSV_END") == 0) {
         end_csv_input();
         return true;
-    } else if (strncmp(command, "DISCHARGE_DEBUG ", 16) == 0) {
+    } else if (strncmp(command, "DC_DEBUG ", 16) == 0) {
         bool new_debug_mode = (atoi(command + 16) != 0);
         // Only print if the state actually changes
         if (discharge_config.debug_mode != new_debug_mode) {
@@ -321,7 +321,7 @@ bool process_discharge_command(const char* command) {
             printf("[DEBUG] Debug mode: %s\n", discharge_config.debug_mode ? "ON" : "OFF");
         }
         return true;
-    } else if (strncmp(command, "DISCHARGE_TRIGGER ", 18) == 0) {
+    } else if (strncmp(command, "DC_TRIGGER ", 18) == 0) {
         if (discharge_config.debug_mode) {
             bool new_trigger = (atoi(command + 18) != 0);
             // Only print if the state actually changes
@@ -333,7 +333,7 @@ bool process_discharge_command(const char* command) {
             printf("[ERROR] Debug mode required for manual trigger\n");
         }
         return true;
-    } else if (strcmp(command, "DISCHARGE_TRIGGER_STATUS") == 0) {
+    } else if (strcmp(command, "DC_TRIGGER_STATUS") == 0) {
         bool hw_trigger = gpio_get(TRIGGER_PIN);
         bool effective_trigger = discharge_config.debug_mode ? discharge_config.manual_trigger : hw_trigger;
         printf("[INFO] Hardware trigger: %s, Debug mode: %s, Manual trigger: %s, Effective: %s\n",
@@ -342,7 +342,7 @@ bool process_discharge_command(const char* command) {
                discharge_config.manual_trigger ? "ON" : "OFF",
                effective_trigger ? "ACTIVE" : "INACTIVE");
         return true;
-    } else if (strncmp(command, "DISCHARGE_VERBOSE ", 18) == 0) {
+    } else if (strncmp(command, "DC_VERBOSE ", 18) == 0) {
         bool new_verbose = (atoi(command + 18) != 0);
         // Only print if the state actually changes
         if (discharge_config.verbose != new_verbose) {
@@ -350,7 +350,7 @@ bool process_discharge_command(const char* command) {
             printf("[DEBUG] Verbose mode: %s\n", discharge_config.verbose ? "ON" : "OFF");
         }
         return true;
-    } else if (strcmp(command, "DISCHARGE_STATUS") == 0) {
+    } else if (strcmp(command, "DC_STATUS") == 0) {
         printf("[COMMAND] Discharge Status:\n");
         printf("  Step duration: %lu ms\n", discharge_config.step_duration_ms);
         printf("  CH1 steps: %d\n", discharge_config.ch1.num_steps);
@@ -359,10 +359,10 @@ bool process_discharge_command(const char* command) {
         printf("  Running: %s\n", sequence_running ? "YES" : "NO");
         printf("  Output inversion: %s\n", discharge_config.invert_output ? "ENABLED" : "DISABLED");  // Add this line
         return true;
-    } else if (strcmp(command, "DISCHARGE_HELP") == 0) {
+    } else if (strcmp(command, "DC_HELP") == 0) {
         print_discharge_help();
         return true;
-    } else if (strncmp(command, "DISCHARGE_INVERT ", 17) == 0) {
+    } else if (strncmp(command, "DC_INVERT ", 17) == 0) {
         bool new_invert = (atoi(command + 17) != 0);
         if (discharge_config.invert_output != new_invert) {
             discharge_config.invert_output = new_invert;
@@ -383,25 +383,25 @@ void discharge_system_init(void) {
     // Launch core1 real-time loop
     multicore_launch_core1(core1_discharge_loop);
     printf("[INFO] Core 1 launched for discharge PWM control\n");
-    printf("[INFO] Use DISCHARGE_HELP for commands.\n");
+    printf("[INFO] Use DC_HELP for commands.\n");
 }
 
 // --- Help Function ---
 void print_discharge_help(void) {
     printf("[COMMAND]\n");
     printf("--- Discharge Control Help ---\n");
-    printf("  DISCHARGE_STEP <ms> CH1 <d1,..> [CH2 <d1,..>]\n");
+    printf("  DC_STEP <ms> CH1 <d1,..> [CH2 <d1,..>]\n");
     printf("    Defines a sequence in a single line.\n\n");
-    printf("  DISCHARGE_CSV <ms>\n");
+    printf("  DC_CSV <ms>\n");
     printf("    Starts multi-line CSV input. Each line is 'CH1_duty,CH2_duty'.\n");
-    printf("  DISCHARGE_CSV_END\n");
+    printf("  DC_CSV_END\n");
     printf("    Finishes CSV input and commits the sequence.\n\n");
-    printf("  DISCHARGE_INVERT <0|1>          - Toggle output inversion (0=normal, 1=inverted).\n");  // Add this line
-    printf("  DISCHARGE_DEBUG <0|1>           - Enable/disable manual trigger override.\n");
-    printf("  DISCHARGE_TRIGGER <0|1>         - Manually trigger sequence (requires debug mode).\n");
-    printf("  DISCHARGE_TRIGGER_STATUS        - Show hardware and effective trigger status.\n");
-    printf("  DISCHARGE_VERBOSE <0|1>         - Toggle step-by-step messages from the PWM core.\n");
-    printf("  DISCHARGE_STATUS                - Show the currently programmed sequence.\n");
+    printf("  DC_INVERT <0|1>          - Toggle output inversion (0=normal, 1=inverted).\n");  // Add this line
+    printf("  DC_DEBUG <0|1>           - Enable/disable manual trigger override.\n");
+    printf("  DC_TRIGGER <0|1>         - Manually trigger sequence (requires debug mode).\n");
+    printf("  DC_TRIGGER_STATUS        - Show hardware and effective trigger status.\n");
+    printf("  DC_VERBOSE <0|1>         - Toggle step-by-step messages from the PWM core.\n");
+    printf("  DC_STATUS                - Show the currently programmed sequence.\n");
 }
 
 // --- Utility Functions ---

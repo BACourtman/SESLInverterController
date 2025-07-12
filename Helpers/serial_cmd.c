@@ -17,14 +17,15 @@ void print_help(void) {
     printf("  TC_ON 0|1                       - Toggle thermocouple auto print\n");
     printf("  TC_CSV                          - Print thermocouple log as CSV\n");
     printf("  TC_NOW                          - Print current thermocouple data\n");
-    printf("  DISCHARGE_STEP <duration> CH1 <duties> CH2 <duties> - Quick discharge setup\n");
-    printf("  DISCHARGE_CSV <step_duration>   - Start CSV discharge input mode\n");
-    printf("  DISCHARGE_CSV_END               - End CSV input and commit sequence\n");
-    printf("  DISCHARGE_STATUS                - Show current discharge sequence\n");
-    printf("  DISCHARGE_DEBUG 0|1             - Enable/disable manual discharge trigger\n");
-    printf("  DISCHARGE_TRIGGER 0|1           - Set manual discharge trigger (debug mode)\n");
-    printf("  DISCHARGE_TRIGGER_STATUS        - Show discharge trigger status\n");
-    printf("  DISCHARGE_VERBOSE <0|1>         - Toggle step-by-step output messages\n");
+    printf("  DC_STEP <duration> CH1 <duties> CH2 <duties> - Quick discharge setup\n");
+    printf("  DC_CSV <step_duration>          - Start CSV discharge input mode\n");
+    printf("  DC_CSV_END                      - End CSV input and commit sequence\n");
+    printf("  DC_STATUS                       - Show current DC discharge sequence\n");
+    printf("  DC_DEBUG 0|1                    - Enable/disable manual DC discharge trigger\n");
+    printf("  DC_TRIGGER 0|1                  - Set manual DC discharge trigger (debug mode)\n");
+    printf("  DC_TRIGGER_STATUS               - Show DC discharge trigger status\n");
+    printf("  DC_INVERT 0|1                   - Toggle DC discharge output inversion\n");
+    printf("  DC_VERBOSE <0|1>                - Toggle step-by-step output messages\n");
     printf("  PIO_DEBUG 0|1                   - Enable/disable manual PIO trigger\n");
     printf("  PIO_TRIGGER 0|1                 - Set manual PIO trigger (debug mode)\n");
     printf("  PIO_TRIGGER_STATUS              - Show PIO trigger status\n");
@@ -61,19 +62,19 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
         }
         
         // Handle discharge commands BEFORE your existing command processing
-        if (strncmp(cmd, "DISCHARGE_", 10) == 0) {
+        if (strncmp(cmd, "DC_", 10) == 0) {
             if (process_discharge_command(cmd)) {
                 chars = 0;
                 return false; // Command handled successfully
             } else {
-                printf("[ERROR] Unknown discharge command. Type DISCHARGE_HELP for help.\n");
+                printf("[ERROR] Unknown discharge command. Type DC_HELP for help.\n");
                 chars = 0;
                 return false;
             }
         }
         
         // Handle discharge help
-        if (strcmp(cmd, "DISCHARGE_HELP") == 0) {
+        if (strcmp(cmd, "DC_HELP") == 0) {
             print_discharge_help();
             chars = 0;
             return false;
@@ -82,7 +83,7 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
         if (chars > 0) {
             // Check if we're in CSV input mode first
             if (is_csv_mode_active()) {
-            // In CSV mode, all commands except DISCHARGE_CSV_END are treated as CSV data
+            // In CSV mode, all commands except DC_CSV_END are treated as CSV data
                 if (process_discharge_command(cmd)) {
                     return false; // Command was handled by discharge system
                 }
@@ -141,12 +142,12 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                 print_help();
                 print_discharge_help();
 
-            // DISCHARGE trigger commands
-            } else if (strncmp(cmd, "DISCHARGE_", 10) == 0) {
+            // DC trigger commands
+            } else if (strncmp(cmd, "DC_", 10) == 0) {
                 if (process_discharge_command(cmd)) {
                     return false; // Command was handled successfully
                 } else {
-                    printf("[ERROR] Unknown discharge command. Type DISCHARGE_HELP for help.\n");
+                    printf("[ERROR] Unknown discharge command. Type DC_HELP for help.\n");
                     return false;
                 }
             // PIO trigger commands
