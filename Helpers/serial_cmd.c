@@ -13,7 +13,7 @@
 void print_help(void) {
     printf("[COMMAND] \n");
     printf("Available commands:\n");
-    printf("  FREQ <frequency> <duty_cycle>   - Set frequency and duty cycle\n");
+    printf("  FREQ <frequency> <duty_cycle1> <duty_cycle2> - Set frequency and duty cycles\n");
     printf("  TC_ON 0|1                       - Toggle thermocouple auto print\n");
     printf("  TC_CSV                          - Print thermocouple log as CSV\n");
     printf("  TC_NOW                          - Print current thermocouple data\n");
@@ -133,10 +133,8 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
             // DC trigger commands
             } else if (strncmp(cmd, "DC_", 3) == 0) {
                 if (process_discharge_command(cmd)) {
-                    return false; // Command was handled successfully
                 } else {
                     printf("[ERROR] Unknown discharge command. Type DC_HELP for help.\n");
-                    return false;
                 }
             // PIO trigger commands
             } else if (strncmp(cmd, "PIO_DEBUG", 9) == 0) {
