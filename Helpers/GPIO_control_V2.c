@@ -303,27 +303,27 @@ bool process_discharge_command(const char* command) {
         return true;
     }
     
-    if (strncmp(command, "DC_STEP", 14) == 0) {
+    if (strncmp(command, "DC_STEP", 7) == 0) {
         process_discharge_step_command(command);
         return true;
-    } else if (strncmp(command, "DC_CSV ", 14) == 0) {
-        uint32_t step_ms = atoi(command + 14);
+    } else if (strncmp(command, "DC_CSV ", 7) == 0) {
+        uint32_t step_ms = atoi(command + 7);
         start_csv_input(step_ms);
         return true;
     } else if (strcmp(command, "DC_CSV_END") == 0) {
         end_csv_input();
         return true;
-    } else if (strncmp(command, "DC_DEBUG ", 16) == 0) {
-        bool new_debug_mode = (atoi(command + 16) != 0);
+    } else if (strncmp(command, "DC_DEBUG ", 9) == 0) {
+        bool new_debug_mode = (atoi(command + 9) != 0);
         // Only print if the state actually changes
         if (discharge_config.debug_mode != new_debug_mode) {
             discharge_config.debug_mode = new_debug_mode;
             printf("[DEBUG] Debug mode: %s\n", discharge_config.debug_mode ? "ON" : "OFF");
         }
         return true;
-    } else if (strncmp(command, "DC_TRIGGER ", 18) == 0) {
+    } else if (strncmp(command, "DC_TRIGGER ", 11) == 0) {
         if (discharge_config.debug_mode) {
-            bool new_trigger = (atoi(command + 18) != 0);
+            bool new_trigger = (atoi(command + 11) != 0);
             // Only print if the state actually changes
             if (discharge_config.manual_trigger != new_trigger) {
                 discharge_config.manual_trigger = new_trigger;
@@ -342,8 +342,8 @@ bool process_discharge_command(const char* command) {
                discharge_config.manual_trigger ? "ON" : "OFF",
                effective_trigger ? "ACTIVE" : "INACTIVE");
         return true;
-    } else if (strncmp(command, "DC_VERBOSE ", 18) == 0) {
-        bool new_verbose = (atoi(command + 18) != 0);
+    } else if (strncmp(command, "DC_VERBOSE ", 11) == 0) {
+        bool new_verbose = (atoi(command + 11) != 0);
         // Only print if the state actually changes
         if (discharge_config.verbose != new_verbose) {
             discharge_config.verbose = new_verbose;
@@ -362,8 +362,8 @@ bool process_discharge_command(const char* command) {
     } else if (strcmp(command, "DC_HELP") == 0) {
         print_discharge_help();
         return true;
-    } else if (strncmp(command, "DC_INVERT ", 17) == 0) {
-        bool new_invert = (atoi(command + 17) != 0);
+    } else if (strncmp(command, "DC_INVERT ", 10) == 0) {
+        bool new_invert = (atoi(command + 10) != 0);
         if (discharge_config.invert_output != new_invert) {
             discharge_config.invert_output = new_invert;
             printf("[COMMAND] Output inversion: %s\n", discharge_config.invert_output ? "ENABLED" : "DISABLED");

@@ -61,18 +61,6 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
             }
         }
         
-        // Handle discharge commands BEFORE your existing command processing
-        if (strncmp(cmd, "DC_", 10) == 0) {
-            if (process_discharge_command(cmd)) {
-                chars = 0;
-                return false; // Command handled successfully
-            } else {
-                printf("[ERROR] Unknown discharge command. Type DC_HELP for help.\n");
-                chars = 0;
-                return false;
-            }
-        }
-        
         // Handle discharge help
         if (strcmp(cmd, "DC_HELP") == 0) {
             print_discharge_help();
@@ -143,7 +131,7 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                 print_discharge_help();
 
             // DC trigger commands
-            } else if (strncmp(cmd, "DC_", 10) == 0) {
+            } else if (strncmp(cmd, "DC_", 3) == 0) {
                 if (process_discharge_command(cmd)) {
                     return false; // Command was handled successfully
                 } else {
