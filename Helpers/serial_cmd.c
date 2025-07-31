@@ -25,7 +25,7 @@ void print_help(void) {
     printf("  DC_TRIGGER 0|1                  - Set manual DC discharge trigger (debug mode)\n");
     printf("  DC_TRIGGER_STATUS               - Show DC discharge trigger status\n");
     printf("  DC_INVERT 0|1                   - Toggle DC discharge output inversion\n");
-    printf("  DC_VERBOSE <0|1>                - Toggle step-by-step output messages\n");
+    printf("  DC_VERBOSE 0|1                - Toggle step-by-step output messages\n");
     printf("  PIO_DEBUG 0|1                   - Enable/disable manual PIO trigger\n");
     printf("  PIO_TRIGGER 0|1                 - Set manual PIO trigger (debug mode)\n");
     printf("  PIO_TRIGGER_STATUS              - Show PIO trigger status\n");
