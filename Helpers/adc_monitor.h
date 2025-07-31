@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #define ADC_DISCONNECT_THRESHOLD 10
-#define MAX_DC_CURRENT 20.0f
+#define MAX_DC_CURRENT 5000.0f
 #define MAX_RMF_CURRENT 400.0f
 
 void adc_monitor_init(void);

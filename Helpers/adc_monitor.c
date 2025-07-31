@@ -9,7 +9,7 @@
 static const float R1 = 2800 ; // Resistor 1 value in ohms
 static const float R2 = 5100 ; // Resistor 2 value in ohms
 static const float v_per_a[3] = {2.5e-3, 2.5e-3, 1.25e-4};     // V/A for each channel
-static const float offset_v[3] = {5.0*R1/(R1+R2)/2, 5.0*R1/(R1+R2)/2, 5.0*R1/(R1+R2)/2};    // Offset voltage for each channel
+static const float offset_v[3] = {2.5*R1/(R1+R2), 2.5*R1/(R1+R2), 2.5*R1/(R1+R2)};    // Offset voltage for each channel
 
 void adc_monitor_init(void) {
     adc_init();
