@@ -3,6 +3,7 @@
 
 #include "adc_monitor.h"
 #include "hardware/adc.h"
+#include <math.h>
 #include <stdio.h>
 
 // Calibration values for each channel
@@ -22,7 +23,7 @@ void adc_monitor_init(void) {
 float adc_raw_to_current(uint16_t raw, float v_per_a, float offset_v) {
     if (raw < ADC_DISCONNECT_THRESHOLD) return 0.0f; // Considered disconnected if below threshold
     float voltage = (raw * 3.3f) / 4095.0f; // 12-bit ADC, 3.3V ref
-    return (voltage - offset_v) / v_per_a;
+    return fabs((voltage - offset_v) / v_per_a);
 }
 
 void read_all_currents(float currents[3]) {
