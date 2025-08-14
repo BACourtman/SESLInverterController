@@ -12,7 +12,6 @@
 const uint CS_PINS[NUM_THERMOCOUPLES] = {9, 13, 14, 15};
 TCLogEntry tc_log[LOG_SIZE];
 int log_head = 0;
-adc_init();
 
 // Add this static variable for consecutive OTP tracking
 static int otp_consecutive_count[NUM_THERMOCOUPLES] = {0};
@@ -96,13 +95,25 @@ void print_current_temperatures(void) {
 }
 
 float read_onboard_temp_c(void) {
-    adc_select_input(4); // Channel 4 is the onboard sensor
-    uint16_t raw = adc_read();
-    // Convert raw reading to voltage
-    const float conversion_factor = 3.3f / (1 << 12); // 12-bit ADC
-    float voltage = raw * conversion_factor;
-    // Convert voltage to temperature (see RP2040 datasheet)
-    float temp_c = 27.0f - (voltage - 0.706f) / 0.001721f;
+    static bool adc_initialized = false;
+    if (!adc_initialized) {
+        adc_init();
+        adc_initialized = true;
+    }
+    
+    adc_select_input(4);  // Temperature sensor is on ADC4
+    const uint16_t raw = adc_read();
+    
+    // RP2350 specific temperature conversion
+    // According to datasheet:
+    // Temp = 27 - (Voltage - 0.706)/0.001721
+    const float vref = 3.3f;
+    const float tempco = -1721.0f;  // -1.721 mV/°C
+    const float v27 = 0.706f;  // Voltage at 27°C
+    
+    float voltage = (raw * vref) / 4095.0f;
+    float temp_c = 27.0f + ((voltage - v27) * 1000.0f) / tempco;
+    
     return temp_c;
 }
 

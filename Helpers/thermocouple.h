@@ -28,5 +28,7 @@ void log_thermocouples(void);
 void print_tc_log_csv(void);
 bool check_overtemperature(float temps[NUM_THERMOCOUPLES]);
 void print_current_temperatures(void);
+void print_onboard_temperature(void);
+float read_onboard_temp_c(void);
 
 #endif
