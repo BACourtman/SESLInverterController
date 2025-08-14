@@ -9,6 +9,7 @@
 #include "shutdown.h"
 #include <stdio.h>
 #include <string.h>
+#include "adc_monitor.h"
 
 void print_help(void) {
     printf("[COMMAND] \n");
@@ -31,6 +32,7 @@ void print_help(void) {
     printf("  PIO_TRIGGER 0|1                 - Set manual PIO trigger (debug mode)\n");
     printf("  PIO_TRIGGER_STATUS              - Show PIO trigger status\n");
     printf("  RELAY 0|1                       - Toggle relay state\n");
+    printf("  ADC_STATUS                      - Show current voltage/current readings for ADC pins\n");
     printf("  HELP                            - Show this help message\n");
 }
 
@@ -166,6 +168,8 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                 }
             } else if (strcmp(cmd, "TC_ONBOARD") == 0) {
                 print_onboard_temperature();
+            } else if (strcmp(cmd, "ADC_STATUS") == 0) {
+                print_adc_readings();
             } else {
                 printf("[ERROR] Unrecognized command: %s\n", cmd);
                 printf("Type HELP for a list of commands.\n");
