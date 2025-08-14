@@ -17,6 +17,7 @@ void print_help(void) {
     printf("  TC_ON 0|1                       - Toggle thermocouple auto print\n");
     printf("  TC_CSV                          - Print thermocouple log as CSV\n");
     printf("  TC_NOW                          - Print current thermocouple data\n");
+    printf("  TC_ONBOARD                      - Print onboard temperature\n");
     printf("  DC_STEP <duration> CH1 <duties> CH2 <duties> - Quick discharge setup\n");
     printf("  DC_CSV <step_duration>          - Start CSV discharge input mode\n");
     printf("  DC_CSV_END                      - End CSV input and commit sequence\n");
@@ -163,6 +164,8 @@ bool process_serial_commands(float *frequency, float *duty_cycle, int *auto_tc_p
                 } else {
                     printf("[ERROR] Invalid RELAY command. Usage: RELAY 0|1\n");
                 }
+            } else if (strcmp(cmd, "TC_ONBOARD") == 0) {
+                print_onboard_temperature();
             } else {
                 printf("[ERROR] Unrecognized command: %s\n", cmd);
                 printf("Type HELP for a list of commands.\n");

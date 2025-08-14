@@ -4,6 +4,7 @@
 #include "thermocouple.h"
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
+#include "hardware/adc.h"
 #include <stdio.h>
 
 #define SPI_PORT spi1
@@ -11,6 +12,7 @@
 const uint CS_PINS[NUM_THERMOCOUPLES] = {9, 13, 14, 15};
 TCLogEntry tc_log[LOG_SIZE];
 int log_head = 0;
+adc_init();
 
 // Add this static variable for consecutive OTP tracking
 static int otp_consecutive_count[NUM_THERMOCOUPLES] = {0};
@@ -91,5 +93,21 @@ void print_current_temperatures(void) {
         float temp = max31855k_temp_c(raw);
         printf("[DATA] TC%d: %.2f C\n", i, temp);
     }
+}
+
+float read_onboard_temp_c(void) {
+    adc_select_input(4); // Channel 4 is the onboard sensor
+    uint16_t raw = adc_read();
+    // Convert raw reading to voltage
+    const float conversion_factor = 3.3f / (1 << 12); // 12-bit ADC
+    float voltage = raw * conversion_factor;
+    // Convert voltage to temperature (see RP2040 datasheet)
+    float temp_c = 27.0f - (voltage - 0.706f) / 0.001721f;
+    return temp_c;
+}
+
+void print_onboard_temperature(void) {
+    float temp = read_onboard_temp_c();
+    printf("[DATA] RP2350 Onboard Temp: %.2f C\n", temp);
 }
 
