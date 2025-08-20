@@ -98,6 +98,7 @@ void print_current_temperatures(void) {
         float temp = max31855k_temp_c(raw);
         printf("[DATA] TC%d (%s): %.2f C\n", i, TC_LABELS[i], temp);
     }
+    print_onboard_temperature();
 }
 
 float read_onboard_temp_c(void) {
