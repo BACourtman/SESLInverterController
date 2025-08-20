@@ -10,6 +10,12 @@
 #define SPI_PORT spi1
 
 const uint CS_PINS[NUM_THERMOCOUPLES] = {9, 13, 14, 15};
+const char* TC_LABELS[NUM_THERMOCOUPLES] = {
+    "BODY",            // Pin 9
+    "PSU",             // Pin 13
+    "INVERTER PHASE 2",// Pin 14
+    "INVERTER PHASE 1" // Pin 15
+};
 TCLogEntry tc_log[LOG_SIZE];
 int log_head = 0;
 
@@ -90,7 +96,7 @@ void print_current_temperatures(void) {
     for (int i = 0; i < NUM_THERMOCOUPLES; ++i) {
         uint32_t raw = max31855k_read(CS_PINS[i]);
         float temp = max31855k_temp_c(raw);
-        printf("[DATA] TC%d: %.2f C\n", i, temp);
+        printf("[DATA] TC%d (%s): %.2f C\n", i, TC_LABELS[i], temp);
     }
 }
 
@@ -98,6 +104,7 @@ float read_onboard_temp_c(void) {
     static bool adc_initialized = false;
     if (!adc_initialized) {
         adc_init();
+        adc_set_temp_sensor_enabled(true);
         adc_initialized = true;
     }
     
