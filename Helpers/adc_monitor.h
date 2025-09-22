@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 #define ADC_DISCONNECT_THRESHOLD 150
-#define MAX_DC_CURRENT 100.0f
-#define MAX_RMF_CURRENT 600.0f // Maximum current in amperes
+#define MAX_DC_CURRENT 200.0f
+#define MAX_RMF_CURRENT 1000.0f // Maximum current in amperes
 #define OCP_CONSECUTIVE_THRESHOLD 5  // Number of consecutive readings needed to trigger OCP
 
 void adc_monitor_init(void);
